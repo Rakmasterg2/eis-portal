@@ -1,0 +1,185 @@
+// Prisma schema for EIS/SEIS Compliance Portal
+
+generator client {
+  provider   = "prisma-client-js"
+  engineType = "client"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// Ascension internal users (ops and investment team)
+model User {
+  id           String   @id @default(uuid())
+  name         String
+  email        String   @unique
+  passwordHash String
+  role         Role     @default(OPS)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  deals        Deal[]   @relation("CreatedDeals")
+  notes        Note[]
+}
+
+enum Role {
+  OPS
+  INVESTMENT
+  ADMIN
+}
+
+// Main deal entity
+model Deal {
+  id               String     @id @default(uuid())
+  companyName      String
+  companyNumber    String
+  schemeType       SchemeType
+  investmentDate   DateTime
+  investmentAmount Float
+  status           DealStatus @default(AWAITING_ONBOARDING)
+  createdAt        DateTime   @default(now())
+  updatedAt        DateTime   @updatedAt
+  completedAt      DateTime?
+  createdById      String
+  createdBy        User       @relation("CreatedDeals", fields: [createdById], references: [id])
+
+  founder    Founder?
+  accountant Accountant?
+  investors  Investor[]
+  milestones Milestone[]
+  documents  Document[]
+  reminders  Reminder[]
+  notes      Note[]
+}
+
+enum SchemeType {
+  EIS
+  SEIS
+}
+
+enum DealStatus {
+  AWAITING_ONBOARDING
+  ONBOARDING_COMPLETE
+  AWAITING_SUBMISSION
+  SUBMITTED
+  AWAITING_EIS2
+  EIS2_RECEIVED
+  COMPLETE
+}
+
+// Founder associated with a deal
+model Founder {
+  id                   String    @id @default(uuid())
+  dealId               String    @unique
+  deal                 Deal      @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  name                 String
+  email                String
+  magicToken           String?   @unique
+  tokenExpiresAt       DateTime?
+  isHandlingSubmission Boolean   @default(true)
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+}
+
+// Accountant nominated by founder
+model Accountant {
+  id              String    @id @default(uuid())
+  dealId          String    @unique
+  deal            Deal      @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  firmName        String
+  contactName     String
+  email           String
+  phone           String?
+  magicToken      String?   @unique
+  tokenExpiresAt  DateTime?
+  hasBeenBriefed  Boolean   @default(false)
+  hasInvestorData Boolean   @default(false)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+}
+
+// Individual investors in the deal
+model Investor {
+  id              String   @id @default(uuid())
+  dealId          String
+  deal            Deal     @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  name            String
+  addressLine1    String
+  addressLine2    String?
+  city            String
+  postcode        String
+  country         String   @default("United Kingdom")
+  sharesIssued    Int
+  amountSubscribed Float
+  shareIssueDate  DateTime
+  shareClass      String   @default("Ordinary")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+// Milestone tracking
+model Milestone {
+  id            String        @id @default(uuid())
+  dealId        String
+  deal          Deal          @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  milestoneType MilestoneType
+  confirmedAt   DateTime      @default(now())
+  confirmedBy   String        // 'founder' or 'accountant'
+  notes         String?
+}
+
+enum MilestoneType {
+  ONBOARDING_COMPLETE
+  SUBMISSION_CONFIRMED
+  EIS2_RECEIVED
+  EIS2_UPLOADED
+}
+
+// Document storage
+model Document {
+  id           String       @id @default(uuid())
+  dealId       String
+  deal         Deal         @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  documentType DocumentType
+  filename     String
+  storagePath  String
+  uploadedAt   DateTime     @default(now())
+  uploadedBy   String       // User ID or 'founder' or 'accountant'
+}
+
+enum DocumentType {
+  INVESTOR_SCHEDULE
+  INVESTMENT_DECK
+  EIS2
+  EIS3
+}
+
+// Reminders
+model Reminder {
+  id            String       @id @default(uuid())
+  dealId        String
+  deal          Deal         @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  reminderType  ReminderType
+  scheduledFor  DateTime
+  sentAt        DateTime?
+  recipientType String       // 'founder' or 'accountant'
+  recipientEmail String
+}
+
+enum ReminderType {
+  ONBOARDING_REMINDER
+  SUBMISSION_REMINDER
+  EIS2_FOLLOWUP
+  ESCALATION
+}
+
+// Notes from ops team
+model Note {
+  id        String   @id @default(uuid())
+  dealId    String
+  deal      Deal     @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  content   String
+  createdAt DateTime @default(now())
+  createdById String
+  createdBy User     @relation(fields: [createdById], references: [id])
+}
