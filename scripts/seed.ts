@@ -1,14 +1,12 @@
 import { PrismaClient } from '@prisma/client'
 import { PrismaNeon } from '@prisma/adapter-neon'
-import { neon } from '@neondatabase/serverless'
 import bcrypt from 'bcryptjs'
 import { v4 as uuidv4 } from 'uuid'
 import 'dotenv/config'
 
 // Create Prisma client with Neon adapter
 const connectionString = process.env.DATABASE_URL!
-const client = neon(connectionString)
-const adapter = new PrismaNeon(client)
+const adapter = new PrismaNeon({ connectionString })
 const prisma = new PrismaClient({ adapter })
 
 async function main() {
