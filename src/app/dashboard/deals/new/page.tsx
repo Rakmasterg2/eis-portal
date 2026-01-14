@@ -16,7 +16,7 @@ import {
   SelectTrigger,
   SelectValue
 } from '@/components/ui/select'
-import { ArrowLeft, Plus, Trash2, Copy, Check, Upload, Download, FileSpreadsheet, AlertCircle } from 'lucide-react'
+import { ArrowLeft, Plus, Trash2, Copy, Check, Upload, Download, FileSpreadsheet, AlertCircle, FileText, X } from 'lucide-react'
 
 interface Investor {
   name: string
@@ -138,6 +138,8 @@ export default function NewDealPage() {
   })
 
   const [investors, setInvestors] = useState<Investor[]>([])
+  const [documents, setDocuments] = useState<{ type: string; file: File }[]>([])
+  const docInputRef = useRef<HTMLInputElement>(null)
 
   const handleChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }))
@@ -173,6 +175,23 @@ export default function NewDealPage() {
   const clearInvestors = () => {
     setInvestors([])
     setUploadError('')
+  }
+
+  const [selectedDocType, setSelectedDocType] = useState('SH01')
+
+  const handleDocUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    setDocuments(prev => [...prev, { type: selectedDocType, file }])
+
+    if (docInputRef.current) {
+      docInputRef.current.value = ''
+    }
+  }
+
+  const removeDocument = (index: number) => {
+    setDocuments(prev => prev.filter((_, i) => i !== index))
   }
 
   const downloadTemplate = () => {
@@ -541,6 +560,78 @@ export default function NewDealPage() {
                 />
               </div>
             </div>
+          </CardContent>
+        </Card>
+
+        {/* Deal Documents */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Deal Documents</CardTitle>
+            <CardDescription>Upload supporting documents (SH01, Investment Agreement, etc.)</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex flex-wrap gap-3">
+              <Select value={selectedDocType} onValueChange={setSelectedDocType}>
+                <SelectTrigger className="w-48">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="SH01">SH01</SelectItem>
+                  <SelectItem value="INVESTMENT_AGREEMENT">Investment Agreement</SelectItem>
+                  <SelectItem value="ARTICLES">Articles of Association</SelectItem>
+                  <SelectItem value="BOARD_RESOLUTION">Board Resolution</SelectItem>
+                  <SelectItem value="SHAREHOLDER_AGREEMENT">Shareholder Agreement</SelectItem>
+                  <SelectItem value="OTHER">Other</SelectItem>
+                </SelectContent>
+              </Select>
+              <input
+                ref={docInputRef}
+                type="file"
+                accept=".pdf,.doc,.docx,.xls,.xlsx"
+                onChange={handleDocUpload}
+                className="hidden"
+                id="doc-upload"
+              />
+              <label htmlFor="doc-upload">
+                <Button type="button" variant="outline" asChild>
+                  <span>
+                    <Upload className="h-4 w-4 mr-2" />
+                    Upload Document
+                  </span>
+                </Button>
+              </label>
+            </div>
+
+            {documents.length > 0 && (
+              <div className="space-y-2">
+                {documents.map((doc, index) => (
+                  <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                    <div className="flex items-center gap-3">
+                      <FileText className="h-5 w-5 text-gray-500" />
+                      <div>
+                        <p className="text-sm font-medium text-gray-900">{doc.file.name}</p>
+                        <p className="text-xs text-gray-500">{doc.type.replace('_', ' ')} • {(doc.file.size / 1024).toFixed(1)} KB</p>
+                      </div>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => removeDocument(index)}
+                      className="text-gray-400 hover:text-red-600"
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {documents.length === 0 && (
+              <p className="text-sm text-gray-500 text-center py-4">
+                No documents uploaded yet. These can also be uploaded later.
+              </p>
+            )}
           </CardContent>
         </Card>
 

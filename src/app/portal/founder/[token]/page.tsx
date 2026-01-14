@@ -18,7 +18,8 @@ import {
   FileText,
   AlertCircle,
   ArrowRight,
-  Loader2
+  Loader2,
+  RefreshCw
 } from 'lucide-react'
 import { formatCurrency, formatDate, getStatusLabel } from '@/lib/utils'
 
@@ -84,6 +85,7 @@ export default function FounderPortalPage() {
   const [submissionDate, setSubmissionDate] = useState('')
   const [uploadingEIS2, setUploadingEIS2] = useState(false)
   const [processing, setProcessing] = useState(false)
+  const [showChangeHandler, setShowChangeHandler] = useState(false)
 
   useEffect(() => {
     async function fetchDeal() {
@@ -151,6 +153,39 @@ export default function FounderPortalPage() {
       const res = await fetch(`/api/portal/${token}`)
       const data = await res.json()
       setDeal(data.deal)
+    } catch (err) {
+      setError((err as Error).message)
+    } finally {
+      setProcessing(false)
+    }
+  }
+
+  const changeSubmissionHandler = async () => {
+    setProcessing(true)
+    try {
+      if (isHandlingSelf === false) {
+        // Add accountant
+        await fetch(`/api/portal/${token}/accountant`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(accountantForm)
+        })
+      }
+
+      await fetch(`/api/portal/${token}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'change_handler',
+          data: { isHandlingSubmission: isHandlingSelf }
+        })
+      })
+
+      const res = await fetch(`/api/portal/${token}`)
+      const data = await res.json()
+      setDeal(data.deal)
+      setFounder(data.founder)
+      setShowChangeHandler(false)
     } catch (err) {
       setError((err as Error).message)
     } finally {
@@ -468,6 +503,145 @@ export default function FounderPortalPage() {
         {/* Data Review & Submission */}
         {(currentStep === 'data' || currentStep === 'submission') && (
           <div className="space-y-6 animate-slide-up">
+            {/* Current handler info */}
+            <Card className="bg-gray-50 border-gray-200">
+              <CardContent className="py-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <User className="h-5 w-5 text-gray-500" />
+                    <div>
+                      <p className="text-sm text-gray-500">Who's handling the HMRC submission?</p>
+                      <p className="font-medium">
+                        {founder.isHandlingSubmission
+                          ? 'You are handling it yourself'
+                          : deal.accountant
+                            ? `${deal.accountant.contactName} at ${deal.accountant.firmName}`
+                            : 'Your accountant'}
+                      </p>
+                    </div>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setShowChangeHandler(!showChangeHandler)
+                      setIsHandlingSelf(founder.isHandlingSubmission)
+                    }}
+                  >
+                    <RefreshCw className="h-4 w-4 mr-1" />
+                    Change
+                  </Button>
+                </div>
+
+                {/* Change handler form */}
+                {showChangeHandler && (
+                  <div className="mt-4 pt-4 border-t border-gray-200 space-y-4 animate-fade-in">
+                    <div className="space-y-3">
+                      <button
+                        type="button"
+                        onClick={() => setIsHandlingSelf(true)}
+                        className={`w-full p-3 rounded-lg border text-left transition-colors ${
+                          isHandlingSelf === true
+                            ? 'border-purple-600 bg-purple-50'
+                            : 'border-gray-200 bg-white hover:border-gray-300'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2">
+                          <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
+                            isHandlingSelf === true ? 'border-purple-600 bg-purple-600' : 'border-gray-300'
+                          }`}>
+                            {isHandlingSelf === true && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
+                          </div>
+                          <span className="text-sm font-medium">I'll handle it myself</span>
+                        </div>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setIsHandlingSelf(false)}
+                        className={`w-full p-3 rounded-lg border text-left transition-colors ${
+                          isHandlingSelf === false
+                            ? 'border-purple-600 bg-purple-50'
+                            : 'border-gray-200 bg-white hover:border-gray-300'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2">
+                          <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
+                            isHandlingSelf === false ? 'border-purple-600 bg-purple-600' : 'border-gray-300'
+                          }`}>
+                            {isHandlingSelf === false && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
+                          </div>
+                          <span className="text-sm font-medium">My accountant will handle it</span>
+                        </div>
+                      </button>
+                    </div>
+
+                    {/* Accountant form when switching to accountant */}
+                    {isHandlingSelf === false && !deal.accountant && (
+                      <div className="p-3 bg-white rounded-lg border border-gray-200 space-y-3">
+                        <div className="grid grid-cols-2 gap-3">
+                          <div className="space-y-1">
+                            <Label className="text-xs">Firm Name *</Label>
+                            <Input
+                              value={accountantForm.firmName}
+                              onChange={(e) => setAccountantForm(prev => ({ ...prev, firmName: e.target.value }))}
+                              placeholder="Smith & Co"
+                              className="h-9"
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <Label className="text-xs">Contact Name *</Label>
+                            <Input
+                              value={accountantForm.contactName}
+                              onChange={(e) => setAccountantForm(prev => ({ ...prev, contactName: e.target.value }))}
+                              placeholder="Jane Smith"
+                              className="h-9"
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <Label className="text-xs">Email *</Label>
+                            <Input
+                              type="email"
+                              value={accountantForm.email}
+                              onChange={(e) => setAccountantForm(prev => ({ ...prev, email: e.target.value }))}
+                              placeholder="jane@smithco.com"
+                              className="h-9"
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <Label className="text-xs">Phone</Label>
+                            <Input
+                              value={accountantForm.phone}
+                              onChange={(e) => setAccountantForm(prev => ({ ...prev, phone: e.target.value }))}
+                              placeholder="+44..."
+                              className="h-9"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setShowChangeHandler(false)}
+                      >
+                        Cancel
+                      </Button>
+                      <Button
+                        size="sm"
+                        onClick={changeSubmissionHandler}
+                        disabled={processing || (isHandlingSelf === false && !deal.accountant && (!accountantForm.firmName || !accountantForm.email))}
+                      >
+                        {processing ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Save Change'}
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
             <Card>
               <CardHeader>
                 <CardTitle>Everything you need to submit</CardTitle>

@@ -193,6 +193,18 @@ export async function POST(
         return NextResponse.json({ success: true })
       }
 
+      case 'change_handler': {
+        // Allow changing who handles the submission (founder or accountant)
+        if (founder) {
+          await prisma.founder.update({
+            where: { id: founder.id },
+            data: { isHandlingSubmission: data.isHandlingSubmission }
+          })
+        }
+
+        return NextResponse.json({ success: true })
+      }
+
       default:
         return NextResponse.json({ error: 'Invalid action' }, { status: 400 })
     }
