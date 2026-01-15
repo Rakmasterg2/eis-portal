@@ -6,8 +6,16 @@
   --primary: #7a00df;
   --primary-hover: #6600bd;
   --secondary: #32373c;
+  --secondary-hover: #424850;
   --accent-cyan: #0693e3;
   --accent-green: #00d084;
+  --muted: #f8f9fa;
+  --muted-foreground: #6b7280;
+  --border: #e5e7eb;
+  --card: #ffffff;
+  --card-foreground: #171717;
+  --radius: 12px;
+  --radius-full: 9999px;
 }
 
 @theme inline {
@@ -18,9 +26,10 @@
 }
 
 body {
-  background: var(--background);
+  background: var(--muted);
   color: var(--foreground);
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  line-height: 1.6;
 }
 
 /* Custom scrollbar */
